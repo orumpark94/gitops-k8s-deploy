@@ -11,7 +11,7 @@ jobs:
     runs-on: self-hosted  
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Ensure roles directory exists
         run: mkdir -p playbook/roles
@@ -35,4 +35,3 @@ jobs:
       - name: Run Ansible Playbook
         run: ansible-playbook -i .github/workflows/inventory.ini playbook/gitops-deploy.yml
 
-        
