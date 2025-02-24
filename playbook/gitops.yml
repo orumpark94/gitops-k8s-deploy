@@ -42,15 +42,21 @@
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Check if ArgoCD is already installed
-      command: helm list -n argocd -q
+      command: helm status argocd -n argocd
       register: argocd_installed
       changed_when: false
       failed_when: false
 
+    - name: Uninstall ArgoCD if partially installed
+      command: helm uninstall argocd -n argocd
+      when: argocd_installed.rc == 0 and "deployed" not in argocd_installed.stdout
+      ignore_errors: yes
+
     - name: Install or Upgrade ArgoCD using Helm
       command: >
-        helm {{ 'upgrade --install --atomic --cleanup-on-fail --force --debug --timeout 600s' if argocd_installed.stdout else 'install' }} argocd argo/argo-cd
+        helm upgrade --install argocd argo/argo-cd
         --namespace argocd --create-namespace
+        --atomic --cleanup-on-fail --timeout 600s
 
     - name: Wait for ArgoCD server to be ready
       command: >
