@@ -15,14 +15,15 @@
       when: not helm_installed.stat.exists
 
     # 3️⃣ Helm Repository 추가 (이미 존재하는지 확인 후 추가)
-    - name: Check if ArgoCD Helm repository is already added
+    - name: Check if Helm repositories exist
       command: helm repo list
       register: helm_repo_list
       changed_when: false
+      ignore_errors: true
 
     - name: Add ArgoCD Helm repository if not exists
       command: helm repo add argo https://argoproj.github.io/argo-helm
-      when: "'argo' not in helm_repo_list.stdout"
+      when: helm_repo_list.rc != 0 or 'argo' not in helm_repo_list.stdout
 
     # 4️⃣ Helm Repository 업데이트
     - name: Update Helm repositories
