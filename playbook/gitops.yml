@@ -79,3 +79,4 @@
     - name: Print ArgoCD admin password
       debug:
         msg: "ArgoCD Admin Password: {{ argocd_password.stdout }}"
+        
