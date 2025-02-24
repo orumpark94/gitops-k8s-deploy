@@ -1,0 +1,10 @@
+- name: Install ArgoCD
+  hosts: master
+  roles:
+    - argocd
+
+- name: Install Helm & Deploy Application
+  hosts: master
+  roles:
+    - helm
+    - deploy-app
