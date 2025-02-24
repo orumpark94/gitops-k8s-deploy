@@ -41,9 +41,16 @@
     - name: Create ArgoCD namespace if not exists
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Install ArgoCD using Helm
+    - name: Check if ArgoCD is already installed
+      command: helm list -n argocd -q
+      register: argocd_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Install or Upgrade ArgoCD using Helm
       command: >
-        helm install argocd argo/argo-cd --namespace argocd --create-namespace
+        helm {{ 'upgrade' if argocd_installed.stdout else 'install' }} argocd argo/argo-cd
+        --namespace argocd --create-namespace
 
     - name: Wait for ArgoCD server to be ready
       command: >
@@ -62,5 +69,3 @@
     - name: Print ArgoCD admin password
       debug:
         msg: "ArgoCD Admin Password: {{ argocd_password.stdout }}"
-
-  
