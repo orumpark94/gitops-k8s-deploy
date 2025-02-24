@@ -39,7 +39,7 @@
       command: helm repo update
 
     - name: Create ArgoCD namespace if not exists
-      command: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Install ArgoCD using Helm
       command: >
