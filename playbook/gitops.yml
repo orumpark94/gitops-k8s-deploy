@@ -49,7 +49,7 @@
 
     - name: Install or Upgrade ArgoCD using Helm
       command: >
-        helm {{ 'upgrade' if argocd_installed.stdout else 'install' }} argocd argo/argo-cd
+        helm {{ 'upgrade --force --debug --timeout 600s' if argocd_installed.stdout else 'install' }} argocd argo/argo-cd
         --namespace argocd --create-namespace
 
     - name: Wait for ArgoCD server to be ready
