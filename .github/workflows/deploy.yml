@@ -19,13 +19,12 @@ jobs:
       - name: Run Ansible Playbook to Deploy ArgoCD
         env:
           KUBECONFIG: kubeconfig
-        run: ansible-playbook -i inventory.ini ansible/gitops.yml
+        run: ansible-playbook -i inventory.ini ansible/gitops.yml -vv
 
       - name: Wait for ArgoCD server to be ready
-        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd -vv
 
       - name: Retrieve ArgoCD admin password
         run: |
-          echo "ArgoCD Admin Password: $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)"
+          echo "ArgoCD Admin Password: $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)" -vv
 
-          
