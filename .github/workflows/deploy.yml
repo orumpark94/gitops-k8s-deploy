@@ -13,7 +13,5 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Run Ansible Playbook 배포
-        run: ansible-playbook -i ansible-playbook -i .github/workflows/inventory.ini playbook/gitops-deploy.yml
-
-
+      - name: Run Ansible Playbook
+        run: ansible-playbook -i .github/workflows/inventory.ini playbook/gitops-deploy.yml
