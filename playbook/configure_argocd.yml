@@ -31,7 +31,45 @@
         --insecure
       ignore_errors: yes
 
-    # 🟢 3️⃣ Helm 설치 및 디렉토리 생성
+    # 🟢 3️⃣ `argocd-redis` 및 `argocd-repo-server-tls` Secret 강제 생성
+    - name: Ensure `argocd-redis` Secret exists
+      shell: |
+        if ! kubectl get secret -n argocd argocd-redis &> /dev/null; then
+          kubectl create secret generic argocd-redis -n argocd \
+            --from-literal=auth=$(openssl rand -hex 16)
+        fi
+      register: create_redis_secret
+      changed_when: create_redis_secret.rc == 0
+
+    - name: Ensure `argocd-repo-server-tls` Secret exists
+      shell: |
+        if ! kubectl get secret -n argocd argocd-repo-server-tls &> /dev/null; then
+          kubectl create secret generic argocd-repo-server-tls -n argocd
+        fi
+      register: create_repo_tls_secret
+      changed_when: create_repo_tls_secret.rc == 0
+
+    # ✅ 🛠️ 특정 상태의 ArgoCD Pod만 재시작
+    - name: Restart only problematic ArgoCD Pods
+      shell: |
+        for pod in $(kubectl get pods -n argocd --no-headers | awk '$3 ~ /CreateContainerConfigError|CrashLoopBackOff/ {print $1}'); do
+          kubectl delete pod -n argocd $pod
+        done
+      register: restart_problematic_pods
+      changed_when: restart_problematic_pods.rc == 0
+
+    # ✅ 🛠️ ArgoCD Deployment 및 StatefulSet 롤링 업데이트 (서비스 다운 최소화)
+    - name: Rollout restart ArgoCD deployments
+      shell: kubectl rollout restart deployment -n argocd
+      register: restart_deployments
+      changed_when: restart_deployments.rc == 0
+
+    - name: Rollout restart ArgoCD statefulsets
+      shell: kubectl rollout restart statefulset -n argocd
+      register: restart_statefulsets
+      changed_when: restart_statefulsets.rc == 0
+
+    # 🟢 5️⃣ Helm 설치 및 디렉토리 생성
     - name: Check if Helm is installed
       shell: command -v helm
       register: helm_installed
@@ -48,7 +86,7 @@
         state: directory
         mode: '0755'
 
-    # 🟢 4️⃣ ArgoCD에서 GitOps 저장소 감시 설정
+    # 🟢 6️⃣ ArgoCD에서 GitOps 저장소 감시 설정
     - name: Add GitOps repository to ArgoCD
       shell: argocd repo add https://github.com/orumpark94/gitops-k8s-deploy.git
       ignore_errors: yes
