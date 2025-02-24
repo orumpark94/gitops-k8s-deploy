@@ -1,37 +1,29 @@
-name: Deploy to Kubernetes
+name: Deploy ArgoCD to Kubernetes
 
 on:
   push:
     branches:
-      - main  
-  workflow_dispatch:  
+      - main
 
 jobs:
   deploy:
-    runs-on: self-hosted  
+    runs-on: self-hosted
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Ensure roles directory exists
-        run: mkdir -p playbook/roles
+      - name: Configure Kubeconfig
+        run: echo "${{ secrets.KUBECONFIG }}" | base64 --decode > kubeconfig
 
-      - name: Check if requirements.yml exists
-        id: check_requirements
+      - name: Run Ansible Playbook to Deploy ArgoCD
+        env:
+          KUBECONFIG: kubeconfig
+        run: ansible-playbook -i inventory.ini ansible/gitops.yml
+
+      - name: Wait for ArgoCD server to be ready
+        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+
+      - name: Retrieve ArgoCD admin password
         run: |
-          if [ ! -f "playbook/roles/requirements.yml" ]; then
-            echo "Generating requirements.yml..."
-            cat <<EOF > playbook/roles/requirements.yml
-          ---
-          roles:
-            - name: argocd
-              src: git+https://github.com/argoproj/argocd-ansible.git
-          EOF
-          fi
-
-      - name: Install Ansible Roles
-        run: ansible-galaxy install -r playbook/roles/requirements.yml
-
-      - name: Run Ansible Playbook
-        run: ansible-playbook -i .github/workflows/inventory.ini playbook/gitops-deploy.yml
-
+          echo "ArgoCD Admin Password: $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)"

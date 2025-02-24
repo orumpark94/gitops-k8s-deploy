@@ -1,0 +1,34 @@
+- name: Deploy ArgoCD to Kubernetes
+  hosts: master
+  become: yes
+  tasks:
+
+    - name: Ensure Helm is installed on Kubernetes Master (192.168.1.140)
+      command: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add ArgoCD Helm repository
+      command: helm repo add argo https://argoproj.github.io/argo-helm
+
+    - name: Update Helm repositories
+      command: helm repo update
+
+    - name: Install ArgoCD using Helm
+      command: helm install argocd argo/argo-cd --namespace argocd
+
+    - name: Wait for ArgoCD server to be ready
+      command: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+
+    - name: Expose ArgoCD server as a LoadBalancer (optional)
+      command: kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+
+    - name: Retrieve ArgoCD admin password
+      shell: kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode
+      register: argocd_password
+      changed_when: false
+
+    - name: Print ArgoCD admin password
+      debug:
+        msg: "ArgoCD Admin Password: {{ argocd_password.stdout }}"
