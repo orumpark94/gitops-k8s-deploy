@@ -16,13 +16,16 @@ jobs:
       - name: Debug files
         run: ls -la .github/workflows/ && cat .github/workflows/inventory.ini || echo "inventory.ini not found" -vv
 
+      - name: Copy inventory file
+        run: cp .github/workflows/inventory.ini inventory.ini
+
       - name: Configure Kubeconfig
         run: echo "${{ secrets.KUBECONFIG }}" | base64 --decode > kubeconfig
 
       - name: Run Ansible Playbook to Deploy ArgoCD
         env:
           KUBECONFIG: kubeconfig
-        run: ansible-playbook -i .github/workflows/inventory.ini playbook/gitops.yml -vv
+        run: ansible-playbook -i inventory.ini playbook/gitops.yml -vv
 
       - name: Wait for ArgoCD server to be ready
         run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd -vv
