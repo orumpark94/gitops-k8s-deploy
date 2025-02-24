@@ -18,26 +18,17 @@
       async: 10
       poll: 0
 
-    # 🟢 2️⃣ 초기 관리자 비밀번호 확인 및 Secret 생성 (필요한 경우)
-    - name: Check if argocd-initial-admin-secret exists
-      shell: kubectl get secret argocd-initial-admin-secret -n argocd --ignore-not-found
-      register: admin_secret_check
-      changed_when: false
-
-    - name: Create argocd-initial-admin-secret if not exists
-      shell: >
-        kubectl create secret generic argocd-initial-admin-secret
-        -n argocd --from-literal=password=$(openssl rand -base64 32)
-      when: admin_secret_check.stdout == ""
-
+    # 🟢 2️⃣ 초기 관리자 비밀번호 확인 및 Secret 설정
     - name: Get ArgoCD initial admin password
       shell: >
         kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode
       register: argocd_admin_password
       changed_when: false
+      ignore_errors: yes  # secret이 없더라도 진행 가능하도록 설정
 
     - name: Log into ArgoCD CLI
-      shell: argocd login localhost:8080 --username admin --password "{{ argocd_admin_password.stdout }}" --insecure
+      shell: argocd login localhost:8080 --username admin --password "{{ argocd_admin_password.stdout | default('')}}"
+        --insecure
       ignore_errors: yes
 
     # 🟢 3️⃣ Helm 설치 및 디렉토리 생성
@@ -66,11 +57,11 @@
       shell: >
         argocd app create gitops-helm-app
         --repo https://github.com/orumpark94/gitops-k8s-deploy.git
-        --path charts/my-app  # 🟢 Helm Chart가 위치한 디렉토리 지정
+        --path charts/my-app
         --dest-server https://kubernetes.default.svc
         --dest-namespace default
         --sync-policy automated
-        --helm-set replicaCount=2  # 🟢 Helm values.yaml 변경 가능
+        --helm-set replicaCount=2
       ignore_errors: yes
 
     - name: Sync ArgoCD application
