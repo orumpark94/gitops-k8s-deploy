@@ -19,7 +19,7 @@ jobs:
       - name: Run Ansible Playbook to Deploy ArgoCD
         env:
           KUBECONFIG: kubeconfig
-        run: ansible-playbook -i inventory.ini ansible/gitops.yml -vv
+        run: ansible-playbook -i inventory.ini playbook/gitops.yml -vv
 
       - name: Wait for ArgoCD server to be ready
         run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd -vv
