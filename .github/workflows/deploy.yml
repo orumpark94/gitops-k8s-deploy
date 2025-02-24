@@ -13,5 +13,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Install Ansible Roles
+        run: ansible-galaxy install -r playbook/roles/requirements.yml
+
       - name: Run Ansible Playbook
         run: ansible-playbook -i .github/workflows/inventory.ini playbook/gitops-deploy.yml
