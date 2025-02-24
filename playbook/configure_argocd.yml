@@ -1,0 +1,55 @@
+- name: Deploy ArgoCD + Helm for GitOps
+  hosts: master
+  become: yes
+  tasks:
+
+    # 🟢 1️⃣ ArgoCD 설치
+    - name: Create ArgoCD namespace
+      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Install ArgoCD
+      shell: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    - name: Wait for ArgoCD to be ready
+      shell: kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+
+    - name: Expose ArgoCD server using port-forwarding
+      shell: nohup kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
+      async: 10
+      poll: 0
+
+    # 🟢 2️⃣ Helm 설치 및 디렉토리 생성
+    - name: Install Helm
+      shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+    - name: Ensure Helm charts directory exists
+      file:
+        path: charts/my-app
+        state: directory
+        mode: '0755'
+
+    # 🟢 3️⃣ ArgoCD에서 GitOps 저장소 감시 설정
+    - name: Add GitOps repository to ArgoCD
+      shell: argocd repo add https://github.com/orumpark94/gitops-k8s-deploy.git
+
+    - name: Create ArgoCD application for Helm-based GitOps
+      shell: >
+        argocd app create gitops-helm-app
+        --repo https://github.com/orumpark94/gitops-k8s-deploy.git
+        --path charts/my-app  # 🟢 Helm Chart가 위치한 디렉토리 지정
+        --dest-server https://kubernetes.default.svc
+        --dest-namespace default
+        --sync-policy automated
+        --helm-set replicaCount=2  # 🟢 Helm values.yaml 변경 가능
+
+    - name: Sync ArgoCD application
+      shell: argocd app sync gitops-helm-app
+
+
+# --dest-server https://kubernetes.default.svc #ArgoCD가 어떤 Kubernetes 클러스터에 배포할 것인지 지정하는 옵션 
+# 만약 ArgoCD가 다른 원격 Kubernetes 클러스터에 배포해야 한다면, 해당 클러스터의 API 서버 주소를 입력해야 합니다. --dest-server https://123.45.67.89:6443
+# https://kubernetes.default.svc → ArgoCD가 실행 중인 클러스터 (로컬 Kubernetes 클러스터)를 의미함.
+
+# --dest-namespace default ArgoCD가 배포할 Kubernetes 네임스페이스를 지정하는 옵션
+# default → 기본적으로 Kubernetes 클러스터가 제공하는 기본 네임스페이스
+
