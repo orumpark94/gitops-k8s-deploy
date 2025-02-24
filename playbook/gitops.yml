@@ -3,75 +3,78 @@
   become: yes
   tasks:
 
+    # 1️⃣ Helm 설치 확인
     - name: Check if Helm is installed
       stat:
         path: /usr/local/bin/helm
       register: helm_installed
 
-    - name: Install Helm if not installed (using shell)
+    # 2️⃣ Helm 설치 (이미 설치된 경우 스킵)
+    - name: Install Helm if not installed
       shell: "curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
       when: not helm_installed.stat.exists
 
-    - name: Download Helm binary if not installed
-      get_url:
-        url: "https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz"
-        dest: "/tmp/helm.tar.gz"
-      when: not helm_installed.stat.exists
+    # 3️⃣ Helm Repository 추가 (이미 존재하는지 확인 후 추가)
+    - name: Check if ArgoCD Helm repository is already added
+      command: helm repo list
+      register: helm_repo_list
+      changed_when: false
 
-    - name: Extract Helm binary
-      command: tar -zxvf /tmp/helm.tar.gz -C /tmp
-      when: not helm_installed.stat.exists
-
-    - name: Move Helm binary to /usr/local/bin
-      command: mv /tmp/linux-amd64/helm /usr/local/bin/helm
-      when: not helm_installed.stat.exists
-
-    - name: Ensure Helm is executable
-      file:
-        path: /usr/local/bin/helm
-        mode: '0755'
-      when: not helm_installed.stat.exists
-
-    - name: Add ArgoCD Helm repository
+    - name: Add ArgoCD Helm repository if not exists
       command: helm repo add argo https://argoproj.github.io/argo-helm
+      when: "'argo' not in helm_repo_list.stdout"
 
+    # 4️⃣ Helm Repository 업데이트
     - name: Update Helm repositories
       command: helm repo update
 
+    # 5️⃣ ArgoCD 네임스페이스 생성 (이미 존재하면 무시)
     - name: Create ArgoCD namespace if not exists
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
+    # 6️⃣ ArgoCD 설치 여부 확인
     - name: Check if ArgoCD is already installed
-      command: helm status argocd -n argocd
+      command: helm list -n argocd -q
       register: argocd_installed
       changed_when: false
-      failed_when: false
 
+    # 7️⃣ ArgoCD가 일부만 설치된 경우 제거
     - name: Uninstall ArgoCD if partially installed
       command: helm uninstall argocd -n argocd
-      when: argocd_installed.rc == 0 and "deployed" not in argocd_installed.stdout
+      when: argocd_installed.stdout != ""
       ignore_errors: yes
 
+    # 8️⃣ 기존 PVC 삭제 (완전 제거할 경우만)
+    - name: Delete existing ArgoCD PVCs if needed
+      command: kubectl delete pvc --all -n argocd
+      when: argocd_installed.stdout != ""
+      ignore_errors: yes
+
+    # 9️⃣ ArgoCD 설치 또는 업그레이드
     - name: Install or Upgrade ArgoCD using Helm
       command: >
         helm upgrade --install argocd argo/argo-cd
         --namespace argocd --create-namespace
         --atomic --cleanup-on-fail --timeout 600s
 
+    # 🔟 ArgoCD 서버가 정상적으로 준비될 때까지 대기
     - name: Wait for ArgoCD server to be ready
       command: >
         kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
+    # 11️⃣ ArgoCD를 LoadBalancer 서비스로 노출 (선택적)
     - name: Expose ArgoCD server as a LoadBalancer (optional)
       command: >
         kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
 
+    # 12️⃣ ArgoCD 관리자 패스워드 가져오기
     - name: Retrieve ArgoCD admin password
       shell: >
         kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode
       register: argocd_password
       changed_when: false
 
+    # 13️⃣ ArgoCD 관리자 패스워드 출력
     - name: Print ArgoCD admin password
       debug:
         msg: "ArgoCD Admin Password: {{ argocd_password.stdout }}"
