@@ -27,3 +27,5 @@ jobs:
       - name: Retrieve ArgoCD admin password
         run: |
           echo "ArgoCD Admin Password: $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)"
+
+          
