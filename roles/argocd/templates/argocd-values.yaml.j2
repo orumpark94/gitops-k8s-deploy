@@ -31,5 +31,8 @@ redis:
     labels: {}  # Redis 서비스에 기본 레이블 추가하여 nil pointer 오류 방지
   serviceAccount:
     create: true  # Redis 서비스 계정 생성 활성화
+  pdb:
+    enabled: false  # Redis PDB 설정 추가하여 nil pointer 오류 방지
+    minAvailable: 1  # 기본 값 추가하여 오류 방지
   config:
     password: "{{ redis_password.stdout }}"
