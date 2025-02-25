@@ -1,6 +1,10 @@
 global:
   image:
     tag: "v2.8.3"  # 최신 ArgoCD 버전 태그 추가
+  dualStack:
+    ipFamilyPolicy: "SingleStack"  # dualStack 오류 방지
+    ipFamilies:
+      - "IPv4"
 
 server:
   service:
