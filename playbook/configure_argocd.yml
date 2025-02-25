@@ -5,14 +5,8 @@
     - name: Ensure argocd namespace exists
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Add ArgoCD Helm repository
-      command: helm repo add argo https://argoproj.github.io/argo-helm
-
-    - name: Update Helm repositories
-      command: helm repo update
-
-    - name: Deploy ArgoCD using Helm
-      command: helm install argocd argo/argo-cd --namespace argocd
+    - name: Install ArgoCD using kubectl
+      shell: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
     - name: Wait for ArgoCD pods to be in Running state
       shell: kubectl get pods -n argocd --no-headers | awk '{print $3}'
@@ -33,3 +27,4 @@
     - name: Display ArgoCD admin password
       debug:
         msg: "ArgoCD Admin Password: {{ argocd_admin_password.stdout }}"
+
