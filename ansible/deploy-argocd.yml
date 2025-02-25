@@ -3,18 +3,10 @@
   hosts: master
   become: yes
   tasks:
-    - name: Create ArgoCD namespace
-      kubernetes.core.k8s:
-        name: argocd
-        api_version: v1
-        kind: Namespace
-        state: present
+    - name: Create ArgoCD namespace on Master Node
+      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      delegate_to: 192.168.1.140
 
-    - name: Install ArgoCD via Helm
-      kubernetes.core.helm:
-        name: argocd
-        chart_ref: argo/argo-cd
-        release_namespace: argocd
-        state: present
-        update_repo_cache: yes
-
+    - name: Install ArgoCD via Helm on Master Node
+      shell: helm repo add argo https://argoproj.github.io/argo-helm && helm repo update && helm install argocd argo/argo-cd -n argocd --create-namespace
+      delegate_to: 192.168.1.140
