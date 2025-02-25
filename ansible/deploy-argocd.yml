@@ -1,32 +1,29 @@
----
-- name: Deploy ArgoCD to Kubernetes Master
+- name: Ensure ArgoCD is not already installed
   hosts: master
   become: yes
   tasks:
-    - name: Install Git (Required for Helm)
-      yum:
-        name: git
-        state: present
-
-    - name: Check if Helm is installed
-      command: which helm
-      register: helm_check
+    - name: Check if ArgoCD namespace exists
+      command: kubectl get namespace argocd
+      register: argocd_namespace
       ignore_errors: yes
 
-    - name: Install Helm if not present
-      shell: |
-        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      when: helm_check.rc != 0
+    - name: Delete existing ArgoCD namespace if it exists
+      command: kubectl delete namespace argocd
+      when: argocd_namespace.rc == 0
 
-    - name: Create ArgoCD namespace on Master Node
-      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-      delegate_to: 192.168.1.140
+    - name: Remove existing ArgoCD ClusterRole
+      command: kubectl delete clusterrole argocd-application-controller
+      ignore_errors: yes
 
-    - name: Install ArgoCD via Helm on Master Node
-      shell: |
-        helm repo add argo https://argoproj.github.io/argo-helm
-        helm repo update
-        helm install argocd argo/argo-cd -n argocd --create-namespace
-      delegate_to: 192.168.1.140
+- name: Install ArgoCD via Helm
+  hosts: master
+  become: yes
+  tasks:
+    - name: Add Argo Helm repository
+      command: helm repo add argo https://argoproj.github.io/argo-helm
 
+    - name: Update Helm repositories
+      command: helm repo update
 
+    - name: Install ArgoCD with Helm
+      command: helm install argocd argo/argo-cd -n argocd --create-namespace
