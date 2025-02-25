@@ -23,7 +23,9 @@
 - name: Delete conflicting ClusterRoles
   shell: >
     kubectl delete clusterrole argocd-application-controller --ignore-not-found=true &&
-    kubectl delete clusterrolebinding argocd-application-controller --ignore-not-found=true
+    kubectl delete clusterrolebinding argocd-application-controller --ignore-not-found=true &&
+    kubectl delete clusterrole argocd-server --ignore-not-found=true &&
+    kubectl delete clusterrolebinding argocd-server --ignore-not-found=true
 
 - name: Generate Redis password
   shell: openssl rand -hex 16
@@ -34,7 +36,7 @@
     helm upgrade --install argocd argo/argo-cd
     --namespace argocd
     --set server.service.type=LoadBalancer
-    --set redis.password="{{ redis_password.stdout }}"
+    --set redis.password={{ redis_password.stdout | quote }}
 
 - name: Check if ArgoCD Redis Secret exists
   shell: kubectl get secret argocd-redis-secret -n argocd
@@ -44,6 +46,6 @@
 - name: Ensure ArgoCD Redis Secret exists if missing
   shell: >
     kubectl create secret generic argocd-redis-secret -n argocd 
-    --from-literal=password="{{ redis_password.stdout }}" 
+    --from-literal=password={{ redis_password.stdout | quote }} 
     --dry-run=client -o yaml | kubectl apply -f -
   when: redis_secret_check.rc != 0
