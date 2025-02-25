@@ -1,51 +1,22 @@
-- name: Create ArgoCD namespace
-  shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+- name: Download ArgoCD Helm chart
+  shell: helm pull argo/argo-cd --untar --untardir /tmp/
 
-- name: Apply ArgoCD CRDs
-  shell: kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-- name: Add ArgoCD Helm repository
-  shell: helm repo add argo https://argoproj.github.io/argo-helm
-
-- name: Update Helm repositories
-  shell: helm repo update
-
-- name: Ensure no pending Helm releases (rollback if necessary)
-  shell: >
-    helm rollback argocd 0 -n argocd || true
-  ignore_errors: true
-
-- name: Uninstall ArgoCD if exists
-  shell: >
-    helm uninstall argocd -n argocd || true
-  ignore_errors: true
-
-- name: Delete conflicting ClusterRoles
-  shell: >
-    kubectl delete clusterrole argocd-application-controller --ignore-not-found=true &&
-    kubectl delete clusterrolebinding argocd-application-controller --ignore-not-found=true &&
-    kubectl delete clusterrole argocd-server --ignore-not-found=true &&
-    kubectl delete clusterrolebinding argocd-server --ignore-not-found=true
+- name: Ensure ArgoCD directory exists
+  file:
+    path: /tmp/argo-cd
+    state: directory
 
 - name: Generate Redis password
   shell: openssl rand -hex 16
   register: redis_password
 
+- name: Update values.yaml with generated passwords
+  template:
+    src: templates/argocd-values.yaml.j2
+    dest: /tmp/argo-cd/values.yaml
+
 - name: Install ArgoCD using Helm
   shell: >
-    helm upgrade --install argocd argo/argo-cd
+    helm upgrade --install argocd /tmp/argo-cd
     --namespace argocd
-    --set server.service.type=LoadBalancer
-    --set redis.password={{ redis_password.stdout | quote }}
-
-- name: Check if ArgoCD Redis Secret exists
-  shell: kubectl get secret argocd-redis-secret -n argocd
-  register: redis_secret_check
-  ignore_errors: true
-
-- name: Ensure ArgoCD Redis Secret exists if missing
-  shell: >
-    kubectl create secret generic argocd-redis-secret -n argocd 
-    --from-literal=password={{ redis_password.stdout | quote }} 
-    --dry-run=client -o yaml | kubectl apply -f -
-  when: redis_secret_check.rc != 0
+    -f /tmp/argo-cd/values.yaml

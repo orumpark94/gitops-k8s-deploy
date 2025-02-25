@@ -1,0 +1,18 @@
+server:
+  service:
+    type: LoadBalancer
+
+configs:
+  secret:
+    argocdServerAdminPassword: "{{ redis_password.stdout }}"
+  cm:
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    repositories: |
+      - name: helm-repo
+        type: helm
+        url: https://charts.bitnami.com/bitnami
+
+redis:
+  enabled: true
+  config:
+    password: "{{ redis_password.stdout }}"

@@ -1,22 +1,22 @@
-# gitops-k8s-deploy/roles/helm/tasks/main.yml
-- name: Download Helm binary
-  get_url:
-    url: "https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz"
-    dest: "/tmp/helm.tar.gz"
-    mode: '0644'
+- name: Download ArgoCD Helm chart
+  shell: helm pull argo/argo-cd --untar --untardir /tmp/
 
-- name: Extract Helm binary
-  unarchive:
-    src: "/tmp/helm.tar.gz"
-    dest: "/tmp/"
-    remote_src: yes
-
-- name: Move Helm binary to /usr/local/bin
-  command: mv /tmp/linux-amd64/helm /usr/local/bin/helm
-  args:
-    creates: /usr/local/bin/helm
-
-- name: Ensure Helm is executable
+- name: Ensure ArgoCD directory exists
   file:
-    path: /usr/local/bin/helm
-    mode: '0755'
+    path: /tmp/argo-cd
+    state: directory
+
+- name: Generate Redis password
+  shell: openssl rand -hex 16
+  register: redis_password
+
+- name: Update values.yaml with generated passwords
+  template:
+    src: templates/argocd-values.yaml.j2
+    dest: /tmp/argo-cd/values.yaml
+
+- name: Install ArgoCD using Helm
+  shell: >
+    helm upgrade --install argocd /tmp/argo-cd
+    --namespace argocd
+    -f /tmp/argo-cd/values.yaml
