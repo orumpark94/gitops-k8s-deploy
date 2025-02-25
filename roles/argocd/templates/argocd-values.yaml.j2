@@ -1,21 +1,21 @@
 global:
   image:
-    tag: "v2.8.3"  # 최신 ArgoCD 버전 지정
+    tag: "v2.8.3"
   networkPolicy:
-    create: false  # nil pointer 방지
+    create: false
   dualStack:
-    enabled: false  # nil pointer 방지
-    ipFamilyPolicy: "SingleStack"  # nil pointer 방지
+    enabled: false
+    ipFamilyPolicy: "SingleStack"
     ipFamilies:
-      - "IPv4"  # 기본값을 IPv4로 설정
+      - "IPv4"
 
 server:
   service:
     type: LoadBalancer
   route:
-    enabled: false  # Openshift 환경이 아닐 경우 false
+    enabled: false
   ingress:
-    enabled: false  # GKE 환경이 아닐 경우 false
+    enabled: false
 
 configs:
   secret:
@@ -29,27 +29,25 @@ configs:
 
 redis:
   enabled: true
-  name: "argocd-redis"  # Redis 이름 추가
+  name: "argocd-redis"
   service:
-    labels: {}  # nil pointer 오류 방지
+    labels: {}
   serviceAccount:
-    create: true  # Redis 서비스 계정 생성 활성화
+    create: true
   pdb:
-    enabled: true  # Pod Disruption Budget 설정 (nil pointer 방지)
+    enabled: true
     minAvailable: 1
   networkPolicy:
-    create: false  # nil pointer 방지
+    create: false
   metrics:
-    enabled: false  # nil pointer 방지
-  containerPorts:
-    redis: 6379  # nil pointer 방지
+    enabled: false
   auth:
-    enabled: true  # 인증 활성화 (nil pointer 방지)
+    enabled: true
   config:
     password: "{{ redis_password.stdout }}"
+  containerPorts: {}  # 직접 참조되는 값 제거하여 nil pointer 문제 방지
 
-# Postgres 설정 추가 (nil pointer 방지)
 postgresql:
-  enabled: false  # 기본 비활성화 (별도 설치할 경우 사용)
+  enabled: false
   auth:
-    enablePostgresUser: false  # nil pointer 방지
+    enablePostgresUser: false
