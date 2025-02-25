@@ -2,23 +2,29 @@
   shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
 - name: Apply ArgoCD CRDs
-  command: kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  shell: kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 - name: Add ArgoCD Helm repository
-  command: helm repo add argo https://argoproj.github.io/argo-helm
+  shell: helm repo add argo https://argoproj.github.io/argo-helm
 
 - name: Update Helm repositories
-  command: helm repo update
+  shell: helm repo update
 
 - name: Install ArgoCD using Helm
-  command: >
+  shell: >
     helm upgrade --install argocd argo/argo-cd
     --namespace argocd
     --set server.service.type=LoadBalancer
+    --set redis.password=$(openssl rand -hex 16)
 
-- name: Ensure ArgoCD Redis Secret exists
-  command: >
+- name: Check if ArgoCD Redis Secret exists
+  shell: kubectl get secret argocd-redis-secret -n argocd
+  register: redis_secret_check
+  ignore_errors: true
+
+- name: Ensure ArgoCD Redis Secret exists if missing
+  shell: >
     kubectl create secret generic argocd-redis-secret -n argocd 
     --from-literal=password=$(openssl rand -hex 16) 
     --dry-run=client -o yaml | kubectl apply -f -
-
+  when: redis_secret_check.rc != 0
