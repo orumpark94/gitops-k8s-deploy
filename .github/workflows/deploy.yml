@@ -12,10 +12,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Run Ansible Playbook to Install Helm
+      - name: Install Helm
         run: ansible-playbook -i inventory.ini playbooks/install_helm.yml -vv
 
-      - name: Ensure ArgoCD Helm Chart is Downloaded
+      - name: Download ArgoCD Helm Chart
         run: ansible-playbook -i inventory.ini playbooks/download_argocd_chart.yml -vv
 
       - name: Install ArgoCD using Helm

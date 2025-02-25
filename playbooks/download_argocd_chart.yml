@@ -1,0 +1,11 @@
+- name: Download ArgoCD Helm Chart
+  hosts: master
+  become: yes
+  tasks:
+    - name: Remove existing ArgoCD Helm chart directory if exists
+      file:
+        path: /tmp/argo-cd
+        state: absent
+
+    - name: Download ArgoCD Helm chart
+      shell: helm pull argo/argo-cd --untar --untardir /tmp/

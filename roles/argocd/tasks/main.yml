@@ -1,14 +1,11 @@
-- name: Download ArgoCD Helm chart
-  shell: helm pull argo/argo-cd --untar --untardir /tmp/
+- name: Generate Redis password
+  shell: openssl rand -hex 16
+  register: redis_password
 
 - name: Ensure ArgoCD directory exists
   file:
     path: /tmp/argo-cd
     state: directory
-
-- name: Generate Redis password
-  shell: openssl rand -hex 16
-  register: redis_password
 
 - name: Update values.yaml with generated passwords
   template:
