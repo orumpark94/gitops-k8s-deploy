@@ -1,6 +1,0 @@
-# gitops-k8s-deploy/playbooks/install_argocd.yml
-- name: Install ArgoCD on Kubernetes
-  hosts: master
-  become: yes
-  roles:
-    - argocd

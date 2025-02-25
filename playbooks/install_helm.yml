@@ -1,7 +1,0 @@
----
-- hosts: master
-  become: yes
-  vars:
-    ansible_roles_path: "/home/runner/actions-runner/_work/gitops-k8s-deploy/gitops-k8s-deploy/roles"
-  roles:
-    - helm
