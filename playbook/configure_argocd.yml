@@ -23,6 +23,20 @@
       register: create_redis_secret
       changed_when: create_redis_secret.rc == 0
 
+    - name: Generate ArgoCD initial admin password
+      shell: openssl rand -hex 16
+      register: argocd_admin_secret
+      changed_when: false
+
+    - name: Ensure `argocd-initial-admin-secret` exists before installing ArgoCD
+      shell: |
+        if ! kubectl get secret -n argocd argocd-initial-admin-secret &> /dev/null; then
+          kubectl create secret generic argocd-initial-admin-secret -n argocd \
+            --from-literal=password="{{ argocd_admin_secret.stdout }}"
+        fi
+      register: create_admin_secret
+      changed_when: create_admin_secret.rc == 0
+
     - name: Ensure `argocd-repo-server-tls` Secret exists before installing ArgoCD
       shell: |
         if ! kubectl get secret -n argocd argocd-repo-server-tls &> /dev/null; then
