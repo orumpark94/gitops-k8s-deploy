@@ -1,0 +1,9 @@
+---
+- name: Apply ArgoCD Application
+  hosts: master
+  become: yes
+  tasks:
+    - name: Apply ArgoCD Application
+      kubernetes.core.k8s:
+        state: present
+        src: apps/argocd-app.yaml
