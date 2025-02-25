@@ -3,10 +3,30 @@
   become: yes
   tasks:
 
-    # 🟢 1️⃣ ArgoCD 설치
+    # ✅ 🛠️ `argocd-redis` 및 `argocd-repo-server-tls` Secret을 ArgoCD 설치 전에 먼저 생성
     - name: Create ArgoCD namespace
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      register: create_namespace
+      changed_when: create_namespace.rc == 0
 
+    - name: Ensure `argocd-redis` Secret exists before installing ArgoCD
+      shell: |
+        if ! kubectl get secret -n argocd argocd-redis &> /dev/null; then
+          kubectl create secret generic argocd-redis -n argocd \
+            --from-literal=auth=$(openssl rand -hex 16)
+        fi
+      register: create_redis_secret
+      changed_when: create_redis_secret.rc == 0
+
+    - name: Ensure `argocd-repo-server-tls` Secret exists before installing ArgoCD
+      shell: |
+        if ! kubectl get secret -n argocd argocd-repo-server-tls &> /dev/null; then
+          kubectl create secret generic argocd-repo-server-tls -n argocd
+        fi
+      register: create_repo_tls_secret
+      changed_when: create_repo_tls_secret.rc == 0
+
+    # 🟢 1️⃣ ArgoCD 설치
     - name: Install ArgoCD
       shell: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
@@ -30,24 +50,6 @@
       shell: argocd login localhost:8080 --username admin --password "{{ argocd_admin_password.stdout | default('')}}"
         --insecure
       ignore_errors: yes
-
-    # 🟢 3️⃣ `argocd-redis` 및 `argocd-repo-server-tls` Secret 강제 생성
-    - name: Ensure `argocd-redis` Secret exists
-      shell: |
-        if ! kubectl get secret -n argocd argocd-redis &> /dev/null; then
-          kubectl create secret generic argocd-redis -n argocd \
-            --from-literal=auth=$(openssl rand -hex 16)
-        fi
-      register: create_redis_secret
-      changed_when: create_redis_secret.rc == 0
-
-    - name: Ensure `argocd-repo-server-tls` Secret exists
-      shell: |
-        if ! kubectl get secret -n argocd argocd-repo-server-tls &> /dev/null; then
-          kubectl create secret generic argocd-repo-server-tls -n argocd
-        fi
-      register: create_repo_tls_secret
-      changed_when: create_repo_tls_secret.rc == 0
 
     # ✅ 🛠️ 특정 상태의 ArgoCD Pod만 재시작
     - name: Restart only problematic ArgoCD Pods
