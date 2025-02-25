@@ -3,10 +3,20 @@
   hosts: master
   become: yes
   tasks:
+    - name: Check if Helm is installed
+      command: which helm
+      register: helm_check
+      ignore_errors: yes
+
+    - name: Install Helm if not present
+      shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: helm_check.rc != 0
+
     - name: Create ArgoCD namespace on Master Node
-      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      command: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       delegate_to: 192.168.1.140
 
     - name: Install ArgoCD via Helm on Master Node
-      shell: helm repo add argo https://argoproj.github.io/argo-helm && helm repo update && helm install argocd argo/argo-cd -n argocd --create-namespace
+      command: helm repo add argo https://argoproj.github.io/argo-helm && helm repo update && helm install argocd argo/argo-cd -n argocd --create-namespace
       delegate_to: 192.168.1.140
