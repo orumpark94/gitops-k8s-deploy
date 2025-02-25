@@ -1,0 +1,6 @@
+# gitops-k8s-deploy/playbooks/install_helm.yml
+- name: Install Helm on Kubernetes Master Node
+  hosts: master
+  become: yes
+  roles:
+    - helm

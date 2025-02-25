@@ -1,0 +1,15 @@
+# gitops-k8s-deploy/roles/argocd/tasks/main.yml
+- name: Create ArgoCD namespace
+  shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+- name: Add ArgoCD Helm repository
+  command: helm repo add argo https://argoproj.github.io/argo-helm
+
+- name: Update Helm repositories
+  command: helm repo update
+
+- name: Install ArgoCD using Helm
+  command: >
+    helm upgrade --install argocd argo/argo-cd
+    --namespace argocd
+    --set server.service.type=LoadBalancer

@@ -14,6 +14,3 @@ jobs:
 
       - name: Run Ansible Playbook
         run: ansible-playbook -i inventory.ini playbooks/install_helm.yml
-
-      - name: Install ArgoCD
-        run: ansible-playbook -i inventory.ini playbooks/install_argocd.yml
