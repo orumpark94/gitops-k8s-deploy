@@ -15,10 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Run Ansible Playbook to Deploy ArgoCD
-        run: |
-          ansible-playbook -i ansible/inventory.ini ansible/deploy-argocd.yml -vv
+#      - name: Run Ansible Playbook to Deploy ArgoCD
+#        run: |
+#          ansible-playbook -i ansible/inventory.ini ansible/deploy-argocd.yml -vv
 
       - name: Run Ansible Playbook to Deploy Application
         run: |
-          ansible-playbook -i ansible/inventory.ini ansible/deploy-app.yml -vv
+          ansible-playbook -i ansible/inventory.ini ansible/deploy-app.yml -vvvv
