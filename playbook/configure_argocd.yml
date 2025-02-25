@@ -7,13 +7,46 @@
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       changed_when: false
 
-    - name: Generate and apply ArgoCD Secrets
+    - name: Check if `argocd-initial-admin-secret` exists
+      shell: kubectl get secret argocd-initial-admin-secret -n argocd --no-headers --ignore-not-found
+      register: admin_secret_check
+      changed_when: false
+
+    - name: Generate and apply ArgoCD initial admin password if not exists
       shell: |
-        kubectl create secret generic argocd-redis -n argocd --from-literal=auth=$(openssl rand -hex 16) --dry-run=client -o yaml | kubectl apply -f -
-        kubectl create secret generic argocd-initial-admin-secret -n argocd --from-literal=password=$(openssl rand -hex 16) --dry-run=client -o yaml | kubectl apply -f -
-        openssl req -x509 -newkey rsa:4096 -keyout /tmp/tls.key -out /tmp/tls.crt -days 365 -nodes -subj '/CN=argocd-repo-server'
-        kubectl create secret generic argocd-repo-server-tls -n argocd --from-file=tls.crt=/tmp/tls.crt --from-file=tls.key=/tmp/tls.key --dry-run=client -o yaml | kubectl apply -f -
-        rm -f /tmp/tls.key /tmp/tls.crt
+        if [[ -z "$(kubectl get secret argocd-initial-admin-secret -n argocd --ignore-not-found)" ]]; then
+          PASSWORD=$(openssl rand -hex 16)
+          kubectl create secret generic argocd-initial-admin-secret -n argocd \
+            --from-literal=password=$PASSWORD --dry-run=client -o yaml | kubectl apply -f -
+        fi
+      changed_when: false
+
+    - name: Check if `argocd-redis` Secret exists
+      shell: kubectl get secret argocd-redis -n argocd --no-headers --ignore-not-found
+      register: redis_secret_check
+      changed_when: false
+
+    - name: Generate and apply `argocd-redis` Secret if not exists
+      shell: |
+        if [[ -z "$(kubectl get secret argocd-redis -n argocd --ignore-not-found)" ]]; then
+          kubectl create secret generic argocd-redis -n argocd \
+            --from-literal=auth=$(openssl rand -hex 16) --dry-run=client -o yaml | kubectl apply -f -
+        fi
+      changed_when: false
+
+    - name: Check if `argocd-repo-server-tls` Secret exists
+      shell: kubectl get secret argocd-repo-server-tls -n argocd --no-headers --ignore-not-found
+      register: repo_tls_secret_check
+      changed_when: false
+
+    - name: Generate and apply `argocd-repo-server-tls` Secret if not exists
+      shell: |
+        if [[ -z "$(kubectl get secret argocd-repo-server-tls -n argocd --ignore-not-found)" ]]; then
+          openssl req -x509 -newkey rsa:4096 -keyout /tmp/tls.key -out /tmp/tls.crt -days 365 -nodes -subj '/CN=argocd-repo-server'
+          kubectl create secret generic argocd-repo-server-tls -n argocd \
+            --from-file=tls.crt=/tmp/tls.crt --from-file=tls.key=/tmp/tls.key --dry-run=client -o yaml | kubectl apply -f -
+          rm -f /tmp/tls.key /tmp/tls.crt
+        fi
       changed_when: false
 
     - name: Install ArgoCD
@@ -22,33 +55,18 @@
     - name: Wait for ArgoCD to be ready
       shell: kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
 
-    - name: Expose ArgoCD server
-      shell: nohup kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
-      async: 10
-      poll: 0
-
-    - name: Retrieve and verify ArgoCD admin password
+    - name: Retrieve ArgoCD admin password
       shell: |
-        PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode)
-        if [[ -z "$PASSWORD" ]]; then
-          echo "Failed to retrieve ArgoCD admin password!" && exit 1
-        fi
-        echo "$PASSWORD"
+        kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode
       register: argocd_admin_password
       changed_when: false
-      failed_when: argocd_admin_password.stdout == "Failed to retrieve ArgoCD admin password!"
+      failed_when: argocd_admin_password.stdout == ""
 
     - name: Log into ArgoCD CLI
       shell: argocd login localhost:8080 --username admin --password "{{ argocd_admin_password.stdout }}" --insecure
+      register: argocd_login
       changed_when: false
-      failed_when: "'logged in successfully' not in argocd_admin_password.stdout"
-
-    - name: Restart problematic ArgoCD Pods
-      shell: |
-        for pod in $(kubectl get pods -n argocd --no-headers | awk '$3 ~ /CreateContainerConfigError|CrashLoopBackOff/ {print $1}'); do
-          kubectl delete pod -n argocd $pod
-        done
-      changed_when: false
+      failed_when: "'logged in successfully' not in argocd_login.stdout"
 
     - name: Rollout restart ArgoCD deployments and statefulsets
       shell: |
@@ -57,14 +75,11 @@
       changed_when: false
 
     - name: Ensure Helm is installed
-      shell: command -v helm || curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      shell: |
+        if ! command -v helm &> /dev/null; then
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        fi
       changed_when: false
-
-    - name: Ensure Helm charts directory exists
-      file:
-        path: charts/my-app
-        state: directory
-        mode: '0755'
 
     - name: Add GitOps repository to ArgoCD
       shell: argocd repo add https://github.com/orumpark94/gitops-k8s-deploy.git
