@@ -1,0 +1,38 @@
+---
+- name: Deploy ArgoCD to Kubernetes
+  hosts: master
+  become: yes
+  tasks:
+    - name: Create ArgoCD namespace
+      kubernetes.core.k8s:
+        name: argocd
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Install ArgoCD via Helm
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argo/argo-cd
+        release_namespace: argocd
+        state: present
+        update_repo_cache: yes
+
+    - name: Expose ArgoCD Server
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: argocd-server
+            namespace: argocd
+          spec:
+            type: NodePort
+            selector:
+              app.kubernetes.io/name: argocd-server
+            ports:
+              - name: http
+                port: 80
+                targetPort: 8080
+                nodePort: 30080
