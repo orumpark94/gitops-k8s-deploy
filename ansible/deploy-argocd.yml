@@ -29,3 +29,4 @@
         helm install argocd argo/argo-cd -n argocd --create-namespace
       delegate_to: 192.168.1.140
 
+
