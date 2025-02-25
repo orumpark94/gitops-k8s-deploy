@@ -23,6 +23,8 @@ configs:
 redis:
   enabled: true
   name: "argocd-redis"  # Redis 이름 추가
+  service:
+    labels: {}  # Redis 서비스에 기본 레이블 추가하여 nil pointer 오류 방지
   serviceAccount:
     create: true  # Redis 서비스 계정 생성 활성화
   config:
