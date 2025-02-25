@@ -9,11 +9,16 @@
       register: create_namespace
       changed_when: create_namespace.rc == 0
 
+    - name: Generate Redis authentication key
+      shell: openssl rand -hex 16
+      register: redis_auth_key
+      changed_when: false
+
     - name: Ensure `argocd-redis` Secret exists before installing ArgoCD
       shell: |
         if ! kubectl get secret -n argocd argocd-redis &> /dev/null; then
           kubectl create secret generic argocd-redis -n argocd \
-            --from-literal=auth=$(openssl rand -hex 16)
+            --from-literal=auth="{{ redis_auth_key.stdout }}"
         fi
       register: create_redis_secret
       changed_when: create_redis_secret.rc == 0
@@ -21,7 +26,10 @@
     - name: Ensure `argocd-repo-server-tls` Secret exists before installing ArgoCD
       shell: |
         if ! kubectl get secret -n argocd argocd-repo-server-tls &> /dev/null; then
-          kubectl create secret generic argocd-repo-server-tls -n argocd
+          kubectl create secret generic argocd-repo-server-tls -n argocd \
+            --from-literal=tls.crt="$(openssl req -x509 -newkey rsa:4096 -keyout /tmp/tls.key -out /tmp/tls.crt -days 365 -nodes -subj '/CN=argocd-repo-server')" \
+            --from-literal=tls.key="$(cat /tmp/tls.key)"
+          rm -f /tmp/tls.key /tmp/tls.crt
         fi
       register: create_repo_tls_secret
       changed_when: create_repo_tls_secret.rc == 0
@@ -40,16 +48,21 @@
 
     # 🟢 2️⃣ 초기 관리자 비밀번호 확인 및 Secret 설정
     - name: Get ArgoCD initial admin password
-      shell: >
-        kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode
+      shell: |
+        kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode || echo ""
       register: argocd_admin_password
       changed_when: false
-      ignore_errors: yes  # secret이 없더라도 진행 가능하도록 설정
+
+    - name: Fail if ArgoCD admin password retrieval fails
+      fail:
+        msg: "Failed to retrieve ArgoCD admin password!"
+      when: argocd_admin_password.stdout == ""
 
     - name: Log into ArgoCD CLI
-      shell: argocd login localhost:8080 --username admin --password "{{ argocd_admin_password.stdout | default('')}}"
-        --insecure
-      ignore_errors: yes
+      shell: argocd login localhost:8080 --username admin --password "{{ argocd_admin_password.stdout }}" --insecure
+      register: argocd_login
+      changed_when: false
+      failed_when: "'logged in successfully' not in argocd_login.stdout"
 
     # ✅ 🛠️ 특정 상태의 ArgoCD Pod만 재시작
     - name: Restart only problematic ArgoCD Pods
