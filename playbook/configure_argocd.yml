@@ -3,10 +3,16 @@
   become: yes
   tasks:
     - name: Ensure argocd namespace exists
-      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      command: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Deploy ArgoCD using official manifest
-      command: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    - name: Add ArgoCD Helm repository
+      command: helm repo add argo https://argoproj.github.io/argo-helm
+
+    - name: Update Helm repositories
+      command: helm repo update
+
+    - name: Deploy ArgoCD using Helm
+      command: helm install argocd argo/argo-cd --namespace argocd
 
     - name: Wait for ArgoCD pods to be in Running state
       shell: kubectl get pods -n argocd --no-headers | awk '{print $3}'
@@ -27,22 +33,3 @@
     - name: Display ArgoCD admin password
       debug:
         msg: "ArgoCD Admin Password: {{ argocd_admin_password.stdout }}"
-
-- name: Install ArgoCD CLI on Ansible Server
-  hosts: ansible
-  become: yes
-  tasks:
-    - name: Download ArgoCD CLI latest version
-      get_url:
-        url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
-        dest: "/usr/local/bin/argocd"
-        mode: '0755'
-
-    - name: Verify ArgoCD CLI installation
-      command: argocd version
-      register: argocd_cli_version
-      ignore_errors: yes  # 오류 발생 시 무시하고 진행
-
-    - name: Display ArgoCD CLI version
-      debug:
-        msg: "ArgoCD CLI Version: {{ argocd_cli_version.stdout }}"
