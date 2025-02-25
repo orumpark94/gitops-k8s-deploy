@@ -8,11 +8,15 @@
       ignore_errors: yes
 
     - name: Delete existing ArgoCD namespace if it exists
-      command: kubectl delete namespace argocd
+      command: kubectl delete namespace argocd --ignore-not-found=true
       when: argocd_namespace.rc == 0
 
     - name: Remove existing ArgoCD ClusterRole
-      command: kubectl delete clusterrole argocd-application-controller
+      command: kubectl delete clusterrole argocd-application-controller --ignore-not-found=true
+      ignore_errors: yes
+
+    - name: Remove existing ArgoCD ClusterRoleBinding
+      command: kubectl delete clusterrolebinding argocd-application-controller --ignore-not-found=true
       ignore_errors: yes
 
 - name: Install ArgoCD via Helm
@@ -26,4 +30,4 @@
       command: helm repo update
 
     - name: Install ArgoCD with Helm
-      command: helm install argocd argo/argo-cd -n argocd --create-namespace
+      command: helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace
