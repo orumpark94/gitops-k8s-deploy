@@ -8,6 +8,7 @@ global:
     ipFamilyPolicy: "SingleStack"
     ipFamilies:
       - "IPv4"
+  deploymentAnnotations: {}  # 이 값을 추가하면 deepCopy 문제 해결됨 ✅
 
 server:
   service:
@@ -45,7 +46,7 @@ redis:
     enabled: true
   config:
     password: "{{ redis_password.stdout }}"
-  containerPorts: {}  # 직접 참조되는 값 제거하여 nil pointer 문제 방지
+  containerPorts: {}
 
 postgresql:
   enabled: false
