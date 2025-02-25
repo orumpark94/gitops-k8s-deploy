@@ -6,4 +6,4 @@
     - name: Apply ArgoCD Application
       kubernetes.core.k8s:
         state: present
-        src: apps/argocd-app.yaml
+        src: ../apps/argocd-app.yaml
