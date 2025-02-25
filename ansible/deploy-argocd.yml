@@ -31,3 +31,10 @@
 
     - name: Install ArgoCD with Helm
       command: helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace
+      async: 300
+      poll: 10
+      register: helm_install
+
+    - name: Debug Helm Installation Output
+      debug:
+        var: helm_install
