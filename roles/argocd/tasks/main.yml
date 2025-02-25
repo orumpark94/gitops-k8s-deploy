@@ -1,6 +1,8 @@
-# gitops-k8s-deploy/roles/argocd/tasks/main.yml
 - name: Create ArgoCD namespace
   shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+- name: Apply ArgoCD CRDs
+  command: kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 - name: Add ArgoCD Helm repository
   command: helm repo add argo https://argoproj.github.io/argo-helm
@@ -13,3 +15,10 @@
     helm upgrade --install argocd argo/argo-cd
     --namespace argocd
     --set server.service.type=LoadBalancer
+
+- name: Ensure ArgoCD Redis Secret exists
+  command: >
+    kubectl create secret generic argocd-redis-secret -n argocd 
+    --from-literal=password=$(openssl rand -hex 16) 
+    --dry-run=client -o yaml | kubectl apply -f -
+
