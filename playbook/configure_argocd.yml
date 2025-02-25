@@ -3,7 +3,7 @@
   become: yes
   tasks:
     - name: Ensure argocd namespace exists
-      command: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Add ArgoCD Helm repository
       command: helm repo add argo https://argoproj.github.io/argo-helm
