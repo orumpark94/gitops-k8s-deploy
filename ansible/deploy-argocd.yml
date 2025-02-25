@@ -17,3 +17,4 @@
         release_namespace: argocd
         state: present
         update_repo_cache: yes
+
