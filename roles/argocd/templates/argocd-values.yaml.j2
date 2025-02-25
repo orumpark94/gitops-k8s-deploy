@@ -3,6 +3,11 @@ global:
     tag: "v2.8.3"  # 최신 ArgoCD 버전 태그 추가
   networkPolicy:
     create: false  # nil pointer 방지 (필요하면 true로 변경 가능)
+  dualStack:
+    enabled: false  # IPv4/IPv6 DualStack 비활성화 (nil pointer 방지)
+    ipFamilyPolicy: "SingleStack"  # nil pointer 방지
+    ipFamilies: 
+      - "IPv4"  # IPv4를 기본으로 설정
 
 server:
   service:
