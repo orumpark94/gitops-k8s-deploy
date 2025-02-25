@@ -4,30 +4,25 @@
   tasks:
     - name: Ensure argocd namespace exists
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-      delegate_to: 192.168.1.140
 
     - name: Install ArgoCD using kubectl
       shell: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-      delegate_to: 192.168.1.140
 
-    - name: Wait for ArgoCD pods to be in Running state
-      shell: kubectl get pods -n argocd --no-headers | awk '{print $3}'
+    - name: Wait for ArgoCD server to be ready
+      command: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
       register: pod_status
       retries: 15
       delay: 10
-      until: pod_status.stdout.find("Running") != -1
-      delegate_to: 192.168.1.140
+      until: pod_status.rc == 0
 
     - name: Change ArgoCD server service to NodePort
-      shell: >
+      command: >
         kubectl patch svc argocd-server -n argocd
         --type='json' -p='[{"op": "replace", "path": "/spec/type", "value": "NodePort"}]'
-      delegate_to: 192.168.1.140
 
     - name: Get ArgoCD admin password
-      shell: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      command: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
       register: argocd_admin_password
-      delegate_to: 192.168.1.140
 
     - name: Display ArgoCD admin password
       debug:

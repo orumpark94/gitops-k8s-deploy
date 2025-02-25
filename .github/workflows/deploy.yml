@@ -1,4 +1,4 @@
-name: Deploy ArgoCD to Kubernetes
+name: Deploy ArgoCD with Ansible
 
 on:
   push:
@@ -7,14 +7,14 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: self-hosted  # 사내망에서 사용하는 Runner
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Debug files
-        run: ls -la .github/workflows/ && cat .github/workflows/inventory.ini || echo "inventory.ini not found" -vv
+        run: ls -la .github/workflows/ && cat .github/workflows/inventory.ini || echo "inventory.ini not found"
 
       - name: Copy inventory file
         run: cp .github/workflows/inventory.ini inventory.ini
@@ -28,8 +28,12 @@ jobs:
         run: ansible-playbook -i inventory.ini playbook/configure_argocd.yml -vv
 
       - name: Wait for ArgoCD server to be ready
-        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd -vv
+        env:
+          KUBECONFIG: kubeconfig
+        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
       - name: Retrieve ArgoCD admin password
+        env:
+          KUBECONFIG: kubeconfig
         run: |
-          echo "ArgoCD Admin Password: $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)" -vv
+          echo "ArgoCD Admin Password: $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)"
