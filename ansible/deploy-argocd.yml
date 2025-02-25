@@ -3,6 +3,11 @@
   hosts: master
   become: yes
   tasks:
+    - name: Install Git (Required for Helm)
+      yum:
+        name: git
+        state: present
+
     - name: Check if Helm is installed
       command: which helm
       register: helm_check
@@ -14,7 +19,7 @@
       when: helm_check.rc != 0
 
     - name: Create ArgoCD namespace on Master Node
-      command: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      command: kubectl apply -f - <<< "$(kubectl create namespace argocd --dry-run=client -o yaml)"
       delegate_to: 192.168.1.140
 
     - name: Install ArgoCD via Helm on Master Node
