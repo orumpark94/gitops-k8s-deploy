@@ -15,12 +15,13 @@ jobs:
       - name: Set ArgoCD Server
         run: echo "ARGOCD_SERVER=192.168.1.142:32384" >> $GITHUB_ENV
 
+      - name: Set ArgoCD Environment Variables
+        run: echo "ARGOCD_OPTS=--insecure" >> $GITHUB_ENV
+
       - name: ArgoCD Login
         run: |
-          argocd login $ARGOCD_SERVER --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+          argocd login $ARGOCD_SERVER --username admin --password ${{ secrets.ARGOCD_PASSWORD }}
 
       - name: Sync ArgoCD Application
         run: |
           argocd app sync my-app
-
-          
