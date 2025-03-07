@@ -18,12 +18,17 @@ jobs:
       - name: Set ArgoCD Environment Variables
         run: echo "ARGOCD_OPTS=--insecure" >> $GITHUB_ENV
 
+      - name: Debug Secrets
+        run: echo "ARGOCD_PASSWORD is set"
+        env:
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+
       - name: ArgoCD Login
         run: |
-          argocd login $ARGOCD_SERVER --username admin --password ${{ secrets.ARGOCD_PASSWORD }}
+          argocd login $ARGOCD_SERVER --username admin --password "$ARGOCD_PASSWORD"
+        env:
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
 
       - name: Sync ArgoCD Application
         run: |
           argocd app sync my-app
-
-          
