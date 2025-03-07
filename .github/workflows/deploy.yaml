@@ -35,3 +35,5 @@ jobs:
       - name: Sync ArgoCD Application (Verbose Mode)
         run: |
           argocd app sync my-app --grpc-web
+
+          
