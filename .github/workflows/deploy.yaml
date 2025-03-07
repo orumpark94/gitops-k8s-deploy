@@ -32,3 +32,5 @@ jobs:
       - name: Sync ArgoCD Application
         run: |
           argocd app sync my-app
+
+          
