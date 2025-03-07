@@ -16,7 +16,10 @@ jobs:
         run: echo "ARGOCD_SERVER=192.168.1.141:32384" >> $GITHUB_ENV
 
       - name: Set ArgoCD Environment Variables
-        run: echo "ARGOCD_OPTS=--insecure" >> $GITHUB_ENV
+        run: |
+          echo "ARGOCD_OPTS=--insecure" >> $GITHUB_ENV
+          echo "ARGOCD_HTTP_TRACE=true" >> $GITHUB_ENV
+          echo "ARGOCD_LOG_LEVEL=debug" >> $GITHUB_ENV
 
       - name: Debug Secrets
         run: echo "ARGOCD_PASSWORD is set"
@@ -25,12 +28,10 @@ jobs:
 
       - name: ArgoCD Login
         run: |
-          argocd login $ARGOCD_SERVER --username admin --password "$ARGOCD_PASSWORD"
+          argocd login $ARGOCD_SERVER --username admin --password "$ARGOCD_PASSWORD" --insecure
         env:
           ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
 
-      - name: Sync ArgoCD Application
+      - name: Sync ArgoCD Application (Verbose Mode)
         run: |
-          argocd app sync my-app -vv
-
-
+          argocd app sync my-app --grpc-web
