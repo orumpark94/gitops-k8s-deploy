@@ -13,11 +13,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set ArgoCD Server
-        run: echo "ARGOCD_SERVER=192.168.1.140:32384" >> $GITHUB_ENV
+        run: echo "ARGOCD_SERVER=192.168.1.142:32384" >> $GITHUB_ENV
 
       - name: ArgoCD Login
         run: |
-          argocd login $ARGOCD_SERVER --username admin --password 1q2w3e4r --insecure
+          argocd login $ARGOCD_SERVER --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
 
       - name: Sync ArgoCD Application
         run: |
